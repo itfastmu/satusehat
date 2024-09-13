@@ -47,7 +47,8 @@ new Elysia()
       detail_pemberian_obat.tgl_perawatan, 
       detail_pemberian_obat.jam, 
       satu_sehat_mapping_lokasi_depo_farmasi.id_lokasi_satusehat, 
-      bangsal.nm_bangsal 
+      bangsal.nm_bangsal,
+      satu_sehat_medicationrequest.id_medicationrequest
     from 
       reg_periksa 
       inner join pasien on reg_periksa.no_rkm_medis = pasien.no_rkm_medis 
@@ -85,7 +86,7 @@ new Elysia()
                     urlPasien.searchParams.append('identifier', `https://fhir.kemkes.go.id/id/nik|${medication.no_ktp}`);
                 const urlPractitioner = new URL(`https://api-satusehat.kemkes.go.id/fhir-r4/v1/Practitioner`);
                 urlPractitioner.searchParams.append('identifier', `https://fhir.kemkes.go.id/id/nik|${medication.ktppraktisi}`);
-                const urlDispense = new URL(``)
+                const urlDispense = new URL(`https://api-satusehat.kemkes.go.id/fhir-r4/v1/MedicationDispense`)
 
                 const [pasien, practitioner] = await Promise.all([
                     fetch(urlPasien, { headers: { "Authorization": `Bearer ${token}` } }).then(res => res.json()),
@@ -93,7 +94,7 @@ new Elysia()
                     // execute(`SELECT id_medicationrequest FROM satu_sehat_medicationrequest WHERE no_resep ='${medication.no_resep}' AND kode_brng = '${medication.kode_brng}'`)
                 ]);
 
-                if (pasien.entry !==undefined && practitioner.entry !==undefined) {
+                if (pasien.entry !==undefined && practitioner.entry !==undefined && medication.id_medicationrequest !== null) {
                     const data = dispense(medication,pasien,practitioner)
                     fetch(urlDispense, { 
                         headers: { 
@@ -103,13 +104,16 @@ new Elysia()
                         method:"POST",
                         body:JSON.stringify(data)
                     }).then(res => res.json()).then(result=>{
-                        // processing result
+                        if(result.id){
+                            console.log(`INSERT INTO satu_sehat_medicationdispense(no_rawat,tgl_perawatan,jam,kode_brng,no_batch,no_faktur,id_medicationdispense) values('${medication.no_rawat}','${new Date(medication.tgl_perawatan).toLocaleDateString('fr-CA')}','${medication.jam}','${medication.kode_brng}',${medication.no_batch},${medication.no_faktur},'${result.id}')`)
+                            execute(`INSERT INTO satu_sehat_medicationdispense(no_rawat,tgl_perawatan,jam,kode_brng,no_batch,no_faktur,id_medicationdispanse) values('${medication.no_rawat}','${new Date(medication.tgl_perawatan).toLocaleDateString('fr-CA')}','${medication.jam}','${medication.kode_brng}','','','${result.id}')`)
+                        }
                     })
                 }
                 await new Promise(resolve => setImmediate(resolve));
             }
             // console.log("ada ",result[0])
-            return result;
+            return {status:"Ok", message:"sudah coba di kirim sebisanya"};
         } catch (error) {
             console.log(error)
         }
